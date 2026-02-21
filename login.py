@@ -3,8 +3,8 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdi
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 import sqlite3  # Pour SQLite
+import bcrypt  # Importer bcrypt pour vérifier les mots de passe
 from theme import DARK_THEME, LIGHT_THEME  # Importer les thèmes
-from auth import verify_password  # Importer la fonction de vérification de mot de passe
 
 class LoginWindow(QWidget):
     def __init__(self):
@@ -43,6 +43,10 @@ class LoginWindow(QWidget):
 
         self.setLayout(layout)
 
+    def verify_password(self, entered_password, stored_hash):
+        # Comparer le mot de passe entré avec le mot de passe haché
+        return bcrypt.checkpw(entered_password.encode('utf-8'), stored_hash.encode('utf-8'))
+
     def login(self):
         username = self.username_input.text()
         password = self.password_input.text()
@@ -55,7 +59,7 @@ class LoginWindow(QWidget):
         user = cursor.fetchone()
         conn.close()
 
-        if user and verify_password(password, user[2]):  # user[2] est le password_hash
+        if user and self.verify_password(password, user[2]):  # user[2] est le password_hash
             self.show_success("Connexion réussie!")
             self.close()  # Ferme la fenêtre de connexion
             # Tu peux maintenant rediriger vers le dashboard ou une autre page principale

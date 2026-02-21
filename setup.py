@@ -2,9 +2,11 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QFormLayout, QMessageBox
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
+import bcrypt
 import sqlite3  # Pour SQLite
 import subprocess  # Importer subprocess pour ouvrir login.py après setup
 from theme import DARK_THEME, LIGHT_THEME  # Importer les thèmes
+from auth import hash_password  # Importer la fonction de hachage
 
 class SetupWindow(QWidget):
     def __init__(self):
@@ -67,12 +69,15 @@ class SetupWindow(QWidget):
             self.show_error("Les mots de passe ne correspondent pas.")
             return
 
+        # Hacher le mot de passe avant de l'enregistrer
+        password_hashed = hash_password(password)
+
         # Créer la base de données et la table si elles n'existent pas
         conn = sqlite3.connect("genrx_database.db")
         cursor = conn.cursor()
 
         # Création de la table users si elle n'existe pas
-        cursor.execute('''
+        cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
@@ -87,12 +92,13 @@ class SetupWindow(QWidget):
             conn.close()
             return
 
-        # Création du compte administrateur
-        cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password))
+        # Création du compte administrateur avec le mot de passe haché
+        cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hashed))
         conn.commit()
         conn.close()
 
         self.show_success("Compte administrateur créé avec succès!")
+
         # Ouvrir le fichier login.py après création du compte
         subprocess.run(["python", "login.py"])  # Cela ouvrira login.py directement
 
