@@ -1,12 +1,11 @@
 import sys
+import subprocess
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QFormLayout, QMessageBox
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
-import bcrypt
 import sqlite3  # Pour SQLite
-import subprocess  # Importer subprocess pour ouvrir login.py après setup
+import bcrypt  # Importer bcrypt pour le hachage des mots de passe
 from theme import DARK_THEME, LIGHT_THEME  # Importer les thèmes
-from auth import hash_password  # Importer la fonction de hachage
 
 class SetupWindow(QWidget):
     def __init__(self):
@@ -20,9 +19,6 @@ class SetupWindow(QWidget):
         self.setFixedSize(550, 350)  # Remplace les dimensions par ce que tu veux
 
         layout = QVBoxLayout()
-
-        # Style global pour augmenter la taille de la police pour tous les éléments
-        self.setStyleSheet(DARK_THEME)
 
         # Logo
         self.logo = QLabel(self)
@@ -55,6 +51,12 @@ class SetupWindow(QWidget):
 
         self.setLayout(layout)
 
+    def hash_password(self, password):
+        # Générer un sel et hacher le mot de passe
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed_password
+
     def create_account(self):
         username = self.username_input.text()
         password = self.password_input.text()
@@ -69,15 +71,12 @@ class SetupWindow(QWidget):
             self.show_error("Les mots de passe ne correspondent pas.")
             return
 
-        # Hacher le mot de passe avant de l'enregistrer
-        password_hashed = hash_password(password)
-
         # Créer la base de données et la table si elles n'existent pas
         conn = sqlite3.connect("genrx_database.db")
         cursor = conn.cursor()
 
         # Création de la table users si elle n'existe pas
-        cursor.execute(''' 
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
@@ -92,17 +91,19 @@ class SetupWindow(QWidget):
             conn.close()
             return
 
-        # Création du compte administrateur avec le mot de passe haché
-        cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hashed))
+        # Hacher le mot de passe avant de le stocker
+        hashed_password = self.hash_password(password)
+
+        # Création du compte administrateur
+        cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, hashed_password))
         conn.commit()
         conn.close()
 
         self.show_success("Compte administrateur créé avec succès!")
-
-        # Ouvrir le fichier login.py après création du compte
-        subprocess.run(["python", "login.py"])  # Cela ouvrira login.py directement
-
-        self.close()  # Fermer la fenêtre setup après avoir créé le compte
+        
+        # Ouvrir login.py dans un nouveau processus et fermer setup.py
+        subprocess.Popen(["python", "login.py"])  # Utilisation de Popen pour ne pas bloquer l'exécution
+        self.close()  # Fermer la fenêtre setup après avoir démarré login.py
 
     def show_error(self, message):
         msg = QMessageBox()

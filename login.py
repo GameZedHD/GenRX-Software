@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt
 import sqlite3  # Pour SQLite
 import bcrypt  # Importer bcrypt pour vérifier les mots de passe
 from theme import DARK_THEME, LIGHT_THEME  # Importer les thèmes
+from dashboard import DashboardWindow  # Assurez-vous d'importer la fenêtre principale du logiciel
 
 class LoginWindow(QWidget):
     def __init__(self):
@@ -45,7 +46,7 @@ class LoginWindow(QWidget):
 
     def verify_password(self, entered_password, stored_hash):
         # Comparer le mot de passe entré avec le mot de passe haché
-        return bcrypt.checkpw(entered_password.encode('utf-8'), stored_hash.encode('utf-8'))
+        return bcrypt.checkpw(entered_password.encode('utf-8'), stored_hash)  # Ne pas encoder stored_hash
 
     def login(self):
         username = self.username_input.text()
@@ -59,12 +60,26 @@ class LoginWindow(QWidget):
         user = cursor.fetchone()
         conn.close()
 
-        if user and self.verify_password(password, user[2]):  # user[2] est le password_hash
-            self.show_success("Connexion réussie!")
-            self.close()  # Ferme la fenêtre de connexion
-            # Tu peux maintenant rediriger vers le dashboard ou une autre page principale
+        if user:
+            if self.verify_password(password, user[2]):  # user[2] est le password_hash
+                self.show_success("Connexion réussie!")
+                
+                # Fermer la fenêtre de connexion
+                self.close()
+
+                # Ouvrir la fenêtre principale du logiciel (par exemple, un tableau de bord)
+                self.open_dashboard()
+
+            else:
+                self.show_error("Mot de passe incorrect!")
         else:
-            self.show_error("Nom d'utilisateur ou mot de passe incorrect!")
+            self.show_error("Nom d'utilisateur incorrect!")
+
+    def open_dashboard(self):
+        # Ici, tu dois ouvrir la fenêtre principale de l'application
+        # Par exemple, une fenêtre appelée `DashboardWindow` qui serait définie dans un autre fichier
+        self.dashboard_window = DashboardWindow()
+        self.dashboard_window.show()
 
     def show_error(self, message):
         msg = QMessageBox()
